@@ -18,7 +18,7 @@ jobs:
         uses: microsoft/setup-msbuild@v2
 
       - name: Build Launcher (Release x64)
-        run: msbuild BanglaSaver\BanglaSaver.vcxproj /p:Configuration=Release /p:Platform=x64
+        run: msbuild BanglaSaver\BanglaSaver.vcxproj /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143
 
       - name: Verify build output
         run: |
