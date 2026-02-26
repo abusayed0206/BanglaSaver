@@ -1,0 +1,40 @@
+name: Build
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build Launcher (Release x64)
+        run: msbuild BanglaSaver\BanglaSaver.vcxproj /p:Configuration=Release /p:Platform=x64
+
+      - name: Verify build output
+        run: |
+          if (!(Test-Path "BanglaSaver\x64\Release\BanglaSaver.exe")) { throw "BanglaSaver.exe not found" }
+          if (!(Test-Path "BanglaSaver\x64\Release\bsaver.exe")) { throw "bsaver.exe not found" }
+          Get-ChildItem "BanglaSaver\x64\Release\*.exe" | Select-Object Name, Length
+
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build Installer
+        run: iscc Installer\BanglaSaverSetup.iss
+
+      - name: Upload Installer Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BanglaSaverSetup
+          path: Installer/Output/*.exe
+          if-no-files-found: error

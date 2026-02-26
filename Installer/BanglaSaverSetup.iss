@@ -6,7 +6,7 @@
 #define MyAppName "BanglaSaver"
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "BanglaSaver"
-#define MyAppURL "https://github.com/niceneatsoft/BanglaSaver"
+#define MyAppURL "https://github.com/abusayed0206/BanglaSaver"
 #define MyAppExeName "BanglaSaver.exe"
 
 [Setup]

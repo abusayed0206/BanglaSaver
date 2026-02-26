@@ -1,0 +1,88 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $ver = $tag -replace '^v', ''
+          echo "VERSION=$ver" >> $env:GITHUB_OUTPUT
+          echo "TAG=$tag" >> $env:GITHUB_OUTPUT
+          echo "Building version: $ver"
+
+      - name: Update version in Inno Setup script
+        run: |
+          $iss = Get-Content "Installer\BanglaSaverSetup.iss" -Raw
+          $iss = $iss -replace '#define MyAppVersion ".*"', "#define MyAppVersion `"${{ steps.version.outputs.VERSION }}`""
+          Set-Content "Installer\BanglaSaverSetup.iss" -Value $iss
+          echo "Updated .iss version to ${{ steps.version.outputs.VERSION }}"
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build Launcher (Release x64)
+        run: msbuild BanglaSaver\BanglaSaver.vcxproj /p:Configuration=Release /p:Platform=x64
+
+      - name: Verify build output
+        run: |
+          if (!(Test-Path "BanglaSaver\x64\Release\BanglaSaver.exe")) { throw "BanglaSaver.exe not found" }
+          if (!(Test-Path "BanglaSaver\x64\Release\bsaver.exe")) { throw "bsaver.exe not found" }
+          Get-ChildItem "BanglaSaver\x64\Release\*.exe" | Format-Table Name, Length
+
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build Installer
+        run: iscc Installer\BanglaSaverSetup.iss
+
+      - name: Verify installer output
+        run: |
+          $installer = Get-ChildItem "Installer\Output\*.exe" | Select-Object -First 1
+          if (!$installer) { throw "Installer not found" }
+          echo "Installer: $($installer.Name) ($([math]::Round($installer.Length / 1MB, 2)) MB)"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.TAG }}
+          name: BanglaSaver ${{ steps.version.outputs.TAG }}
+          body: |
+            ## BanglaSaver ${{ steps.version.outputs.TAG }}
+
+            ### Download
+            Download **BanglaSaverSetup-${{ steps.version.outputs.VERSION }}.exe** below and run it.
+
+            ### Silent Install (for automation)
+            ```
+            BanglaSaverSetup-${{ steps.version.outputs.VERSION }}.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+            ```
+
+            ### Silent Uninstall
+            ```
+            "%LOCALAPPDATA%\Programs\BanglaSaver\unins000.exe" /VERYSILENT /SUPPRESSMSGBOXES
+            ```
+
+            ### What's Included
+            - **BanglaSaver.exe** — Launcher UI for managing the screensaver
+            - **bsaver.exe** — The Bangla screensaver ([source](https://github.com/abusayed0206/bsaver))
+
+            ---
+            *For Microsoft Store submission, use the direct download URL of the installer asset below.*
+          files: Installer/Output/*.exe
+          draft: false
+          prerelease: false
