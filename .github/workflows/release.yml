@@ -78,11 +78,9 @@ jobs:
             ```
 
             ### What's Included
-            - **BanglaSaver.exe** — Launcher UI for managing the screensaver
-            - **bsaver.exe** — The Bangla screensaver ([source](https://github.com/abusayed0206/bsaver))
+            - **BanglaSaver.exe** ï¿½ Launcher UI for managing the screensaver
+            - **bsaver.exe** ï¿½ The Bangla screensaver ([source](https://github.com/abusayed0206/bsaver))
 
-            ---
-            *For Microsoft Store submission, use the direct download URL of the installer asset below.*
           files: Installer/Output/*.exe
           draft: false
           prerelease: false

@@ -33,6 +33,7 @@ UninstallDisplayIcon={app}\{#MyAppExeName}
 ; SetupIconFile=..\BanglaSaver\BanglaSaver.ico
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+SetupMutex=BanglaSaverSetupMutex
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -54,18 +55,45 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]
-; Clean up registry on uninstall — remove screensaver entry if it points to our app
+; Clean up registry on uninstall ï¿½ remove screensaver entry if it points to our app
 Filename: "reg.exe"; Parameters: "delete ""HKCU\Control Panel\Desktop"" /v SCRNSAVE.EXE /f"; Flags: runhidden; RunOnceId: "RemoveScrReg"
 
 [Code]
-// On uninstall, also notify Windows that screensaver changed
+// Exit codes for Microsoft Store EXE submission:
+//   0 = Installation successful (default)
+//   1 = Installation already in progress (SetupMutex)
+//   2 = Installation cancelled by user (default)
+//   4 = Disk space full (checked below)
+
+function GetSpaceOnDisk(const DriveRoot: String; var FreeSpace, TotalSpace: Int64): Boolean;
+  external 'GetDiskFreeSpaceExW@kernel32.dll stdcall';
+
+function InitializeSetup(): Boolean;
+var
+  FreeBytes, TotalBytes: Int64;
+  RequiredBytes: Int64;
+  Drive: String;
+begin
+  Result := True;
+  RequiredBytes := 10 * 1024 * 1024;
+  Drive := ExtractFileDrive(ExpandConstant('{autopf}')) + '\';
+  if GetSpaceOnDisk(Drive, FreeBytes, TotalBytes) then
+  begin
+    if FreeBytes < RequiredBytes then
+    begin
+      MsgBox('Disk space is full. Please free up space and try again.', mbError, MB_OK);
+      Result := False;
+      Exit;
+    end;
+  end;
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   ResultCode: Integer;
 begin
   if CurUninstallStep = usPostUninstall then
   begin
-    // Notify Windows the screensaver setting changed
     Exec('rundll32.exe', 'user32.dll,SystemParametersInfoW 17 0 0 3', '', SW_HIDE, ewNoWait, ResultCode);
   end;
 end;
